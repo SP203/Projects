@@ -74,7 +74,7 @@ def run():
 
     # Konfiguracja interfejsow routerow
     r1.cmd('ifconfig r1-eth0 192.168.1.1/24')
-r1.cmd('ifconfig r1-eth1 4.4.4.1/24 up')
+    r1.cmd('ifconfig r1-eth1 4.4.4.1/24 up')
     r1.cmd('ifconfig r1-eth2 10.0.0.1/24 up')  # Polaczenie z r2 (cos nie dziala!)
     r1.cmd('ifconfig r1-eth3 10.0.2.1/24 up')
 
