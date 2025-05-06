@@ -1,0 +1,98 @@
+import random
+import numpy as np
+import matplotlib.pyplot as plt
+
+import transforms
+import basic
+
+def f3(x, rotation=None, shift=None):
+    x = np.array(x)
+    nx = len(x)
+    if rotation is None:
+        rotation = transforms.rotations[nx][2]
+    if shift is None:
+        shift = transforms.shifts[2][:nx]
+    x_transformed = transforms.shift_rotate(x, shift, rotation)
+    return basic.zakharov(x_transformed) + 300.0
+
+def f19(x, rotation=None, shift=None, shuffle=None):
+    x = np.array(x)
+    nx = len(x)
+    if rotation is None:
+        rotation = transforms.rotations[nx][18]
+    if shift is None:
+        shift = transforms.shifts[18][:nx]
+    if shuffle is None:
+        shuffle = transforms.shuffles[nx][8]
+    x_transformed = transforms.shift_rotate(x, shift, rotation)
+    x_parts = transforms.shuffle_and_partition(x_transformed, shuffle, [0.2] * 5)
+    y = basic.bent_cigar(x_parts[0])
+    y += basic.rastrigin(x_parts[1])
+    y += basic.expanded_griewanks_plus_rosenbrock(x_parts[2])
+    y += basic.weierstrass(x_parts[3])
+    y += basic.expanded_schaffers_f6(x_parts[4])
+    return y + 1900.0
+
+def mutate(individual, mutation_rate, lower_bound, upper_bound):
+    if random.random() < mutation_rate:
+        individual += np.random.normal(0, 1, size=len(individual))
+        individual = np.clip(individual, lower_bound, upper_bound)
+    return individual
+
+def evolutionary_algorithm_1plus1(generations, mutation_rate, lower_bound, upper_bound, fitness_function):
+    parent = np.random.uniform(lower_bound, upper_bound, size=10)
+    parent_fitness = fitness_function(parent)
+
+    history = []
+
+    for _ in range(generations):
+        offspring = mutate(parent.copy(), mutation_rate, lower_bound, upper_bound)
+        offspring_fitness = fitness_function(offspring)
+
+        if offspring_fitness < parent_fitness:
+            parent = offspring
+            parent_fitness = offspring_fitness
+
+        history.append(parent_fitness)
+
+    return history
+
+n = 10
+domain_min = -10
+domain_max = 10
+generations = 500
+mutation_rate = 0.1
+experiments = 10
+
+def average_runs(algorithm_fn, fitness_function):
+    all_histories = []
+    for _ in range(experiments):
+        history = algorithm_fn(generations, mutation_rate, domain_min, domain_max, fitness_function)
+        if len(history) < generations:
+            history += [history[-1]] * (generations - len(history))
+        all_histories.append(history)
+    return np.mean(all_histories, axis=0)
+
+
+evol_history_f3 = average_runs(evolutionary_algorithm_1plus1, f3)
+evol_history_f19 = average_runs(evolutionary_algorithm_1plus1, f19)
+
+
+plt.figure(figsize=(12, 5))
+
+plt.subplot(1, 2, 1)
+plt.plot(evol_history_f3, label='Ewolucyjny (avg)', color='tab:blue')
+plt.xlabel('Iteracja')
+plt.ylabel('Wartość funkcji F3')
+plt.legend()
+plt.title('Algorytm ewolucyjny dla F3 (średnia z 10 eksperymentów)')
+
+plt.subplot(1, 2, 2)
+plt.plot(evol_history_f19, label='Ewolucyjny (avg)', color='tab:blue')
+plt.xlabel('Iteracja')
+plt.ylabel('Wartość funkcji F19')
+plt.legend()
+plt.title('Algorytm ewolucyjny dla F19 (średnia z 10 eksperymentów)')
+
+plt.tight_layout()
+plt.show()

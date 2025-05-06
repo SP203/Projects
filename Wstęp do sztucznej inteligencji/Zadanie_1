@@ -1,0 +1,118 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import time
+from typing import Callable, Sequence
+import autograd.numpy as anp
+from autograd import grad
+
+# Parametry
+n: int = 10  # Wymiar przestrzeni
+domain_min: float = -10  # Granice dziedziny
+domain_max: float = 10
+iterations: int = 100  # Liczba iteracji
+alpha_values: Sequence[float] = [1, 10, 100]  # Wartości początkowe alfa
+epsilon: float = 1e-3  # Kryterium stopu
+x0 = np.random.uniform(domain_min, domain_max, size=n)  # Punkt startowy
+
+# Funkcje
+def quadratic_function(x: Sequence[float]) -> float:
+    # Funkcja kwadratowa f(x) = sum(x_i^2)
+    return anp.sum(anp.array(x) ** 2)
+
+
+def rosenbrock_function(x: Sequence[float]) -> float:
+    # Funkcja Rosenbrocka w przestrzeni n-wymiarowej
+    return anp.sum(100 * (x[1:] - x[:-1] ** 2) ** 2 + (1 - x[:-1]) ** 2)
+
+
+def ackley_function(x: Sequence[float]) -> float:
+    # Funkcja Ackleya w przestrzeni n-wymiarowej
+    a = 20
+    b = 0.2
+    c = 2 * anp.pi
+    d = len(x)
+    sum1 = anp.sum(x ** 2)
+    sum2 = anp.sum(anp.cos(c * x))
+    return -a * anp.exp(-b * anp.sqrt(sum1 / d)) - anp.exp(sum2 / d) + a + anp.exp(1)
+
+
+# Automatyczne różniczkowanie gradientu funkcji
+def solver(
+        eval_func: Callable[[Sequence[float]], float],
+        x0: Sequence[float],
+        alpha: float,
+        max_iters: int,
+        epsilon: float
+
+) -> Sequence[float]:
+    #Implementacja algorytmu gradientu prostego
+    eta = 1 / alpha  # Współczynnik uczenia
+    x = anp.array(x0)
+    history = []
+    gradient_func = grad(eval_func)
+
+    for t in range(max_iters):
+        grad_val = gradient_func(x)
+
+        # Kryterium stopu: gradient bliski zeru
+        if anp.linalg.norm(grad_val) < epsilon:
+            print(f"Zatrzymanie: gradient < {epsilon} po {t} iteracjach")
+            break
+
+        x_new = x - eta * grad_val  # Aktualizacja punktu
+
+        # Kryterium stopu: zmiana wartości x jest bardzo mała
+        if anp.linalg.norm(x_new - x) < epsilon:
+            print(f"Zatrzymanie: |x_new - x| < {epsilon} po {t} iteracjach")
+            break
+
+        x = x_new
+        x = anp.clip(x, domain_min, domain_max)  # Ograniczenie do dziedziny
+        history.append(eval_func(x))
+
+    return history
+
+
+# Tworzenie wykresów dla funkcji kwadratowej, Rosenbrocka i Ackleya
+fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+
+for alpha in alpha_values:
+
+    start_time = time.time()
+    history_quad = solver(quadratic_function, x0, alpha, iterations, epsilon)
+    elapsed_time = time.time() - start_time
+    axes[0].plot(history_quad, label=f'alpha={alpha}, eta={1 / alpha:.4f}, czas={elapsed_time:.4f}s')
+
+    start_time = time.time()
+    history_rosen = solver(rosenbrock_function, x0, alpha, iterations, epsilon)
+    elapsed_time = time.time() - start_time
+    axes[1].plot(history_rosen, label=f'alpha={alpha}, eta={1 / alpha:.4f}, czas={elapsed_time:.4f}s')
+
+    start_time = time.time()
+    history_ackley = solver(ackley_function, x0, alpha, iterations, epsilon)
+    elapsed_time = time.time() - start_time
+    axes[2].plot(history_ackley, label=f'alpha={alpha}, eta={1 / alpha:.4f}, czas={elapsed_time:.4f}s')
+
+# Wykres wykresu funkcji kwadratowej
+axes[0].set_xlabel("Iteracja")
+axes[0].set_ylabel("Wartość funkcji f(x)")
+#axes[0].set_yscale('log')
+axes[0].set_title("Zbieżność dla funkcji kwadatowej")
+axes[0].legend()
+
+# Wykres wykresu funkcji Rosenbrocka
+axes[1].set_xlabel("Iteracja")
+axes[1].set_ylabel("Wartość funkcji f(x)")
+
+axes[1].set_title("Zbieżność dla funkcji Rosenbrocka")
+axes[1].legend()
+
+# Wykres funkcji Ackleya
+axes[2].set_xlabel("Iteracja")
+axes[2].set_ylabel("Wartość funkcji f(x)")
+
+axes[2].set_title("Zbieżność dla funkcji Ackleya")
+axes[2].legend()
+
+plt.tight_layout()
+plt.show()

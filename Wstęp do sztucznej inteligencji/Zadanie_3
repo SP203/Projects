@@ -1,0 +1,126 @@
+
+import time
+
+class Player:
+    def __init__(self, symbol):
+        self.symbol = symbol
+
+class State:
+    def __init__(self, board=None, current_player='X'):
+        self.board = board if board else [' ' for _ in range(9)]
+        self.current_player = current_player
+
+    def is_terminal(self):
+        return self.get_winner() is not None or ' ' not in self.board
+
+    def get_winner(self):
+        winning_combinations = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ]
+        for combo in winning_combinations:
+            a, b, c = combo
+            if self.board[a] == self.board[b] == self.board[c] != ' ':
+                return self.board[a]
+        return None
+
+    def evaluate(self):
+        winner = self.get_winner()
+        if winner == 'X':
+            return 1
+        elif winner == 'O':
+            return -1
+        else:
+            return 0
+
+    def get_possible_moves(self):
+        return [i for i, cell in enumerate(self.board) if cell == ' ']
+
+    def make_move(self, index):
+        new_board = self.board.copy()
+        new_board[index] = self.current_player
+        next_player = 'O' if self.current_player == 'X' else 'X'
+        return State(new_board, next_player)
+
+    def print_board(self):
+        for i in range(3):
+            print(' | '.join(self.board[i*3:i*3+3]))
+            if i < 2:
+                print('--+---+--')
+        print("\n")
+
+class Game:
+    def __init__(self, depth=9):
+        self.player_x = Player('X')
+        self.player_o = Player('O')
+        self.state = State()
+        self.depth = depth
+        self.winner = None
+
+    def minimax(self, state, depth, maximizing):
+        if depth == 0 or state.is_terminal():
+            return state.evaluate(), None
+
+        if maximizing:
+            max_eval = float('-inf')
+            best_move = None
+            for move in state.get_possible_moves():
+                new_state = state.make_move(move)
+                eval, _ = self.minimax(new_state, depth - 1, False)
+                if eval > max_eval:
+                    max_eval = eval
+                    best_move = move
+            return max_eval, best_move
+        else:
+            min_eval = float('inf')
+            best_move = None
+            for move in state.get_possible_moves():
+                new_state = state.make_move(move)
+                eval, _ = self.minimax(new_state, depth - 1, True)
+                if eval < min_eval:
+                    min_eval = eval
+                    best_move = move
+            return min_eval, best_move
+
+    def play(self):
+        while not self.state.is_terminal():
+            self.state.print_board()
+            _, move = self.minimax(self.state, self.depth, self.state.current_player == 'X')
+            if move is None:
+                break
+            self.state = self.state.make_move(move)
+            time.sleep(0.5)
+
+        self.state.print_board()
+        self.winner = self.state.get_winner()
+        if self.winner:
+            print(f"Wygrywa: {self.winner}")
+        else:
+            print("Remis!")
+        return self.winner
+
+if __name__ == "__main__":
+    print("Symulacja gry X vs O z algorytmem Min-Max\n")
+    results = {}
+    for depth in [1, 3, 5, 9]:
+        print(f"\nGlebokosc przeszukiwania: {depth}")
+        wins_x = 0
+        wins_o = 0
+        draws = 0
+        for _ in range(10):  # 10 gier dla każdej głębokości
+            game = Game(depth=depth)
+            winner = game.play()
+            if winner == 'X':
+                wins_x += 1
+            elif winner == 'O':
+                wins_o += 1
+            else:
+                draws += 1
+        print(f"Statystyki dla głębokości {depth}:")
+        print(f"X wygrane: {wins_x}, O wygrane: {wins_o}, Remisy: {draws}")
+        results[depth] = {'X': wins_x, 'O': wins_o, 'Draw': draws}
+
+    print("\nPodsumowanie statystyk dla wszystkich głębokości:")
+    for depth, stats in results.items():
+        print(f"Głębokość {depth}: {stats}")
